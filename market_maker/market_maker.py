@@ -7,6 +7,8 @@ import random
 import requests
 import atexit
 import signal
+import pandas as pd
+import numpy as np
 
 from market_maker import bitmex
 from market_maker.settings import settings
@@ -249,6 +251,11 @@ class OrderManager:
         logger.info("Contracts Traded This Run: %d" % (self.running_qty - self.starting_qty))
         logger.info("Total Contract Delta: %.4f XBT" % self.exchange.calc_delta()['spot'])
 
+        # Save down some metrics into a pandas DataFrame
+        #df = pd.DataFrame()
+        #df['time'] = pd.Series([datetime.now()])
+        #print(df.head())
+
     def get_ticker(self):
         ticker = self.exchange.get_ticker()
         tickLog = self.exchange.get_instrument()['tickLog']
@@ -267,6 +274,7 @@ class OrderManager:
                 self.start_position_buy = ticker["buy"]
             if ticker['sell'] == self.exchange.get_lowest_sell()['price']:
                 self.start_position_sell = ticker["sell"]
+
 
         # Back off if our spread is too small.
         if self.start_position_buy * (1.00 + settings.MIN_SPREAD) > self.start_position_sell:
@@ -304,11 +312,17 @@ class OrderManager:
             if index < 0 and start_position > self.start_position_sell:
                 start_position = self.start_position_buy
 
+
         return math.toNearest(start_position * (1 + settings.INTERVAL) ** index, self.instrument['tickSize'])
 
     ###
     # Orders
     ###
+
+    def place_order_on_signal(self,index):
+        price = self.get_price_offset(index)
+        print('Testing::' + str(price))
+        #return {'price': price, 'orderQty': quantity, 'side': "Buy" if index < 0 else "Sell"}
 
     def place_orders(self):
         """Create order items for use in convergence."""
@@ -336,6 +350,7 @@ class OrderManager:
             quantity = settings.ORDER_START_SIZE + ((abs(index) - 1) * settings.ORDER_STEP_SIZE)
 
         price = self.get_price_offset(index)
+        #print('Testing::' + str(price) + ' index: ' +str(ine))
 
         return {'price': price, 'orderQty': quantity, 'side': "Buy" if index < 0 else "Sell"}
 
